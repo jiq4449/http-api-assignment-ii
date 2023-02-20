@@ -5,7 +5,122 @@
   <link rel="stylesheet" type="text/css" href="/style.css">
   
   <script>
+    const handleResponse = async (response, parseResponse) => {
+      const content = document.querySelector('#content');
 
+      //Based on the status code, display something
+      switch(response.status) {
+        case 200: 
+          content.innerHTML = `<b>Success</b>`;
+          break;
+        case 201:
+          content.innerHTML = `<b>Created</b>`;
+          break;
+        case 204:
+          content.innerHTML = '<b>Updated (No Content)</b>';
+          return;
+        case 400: 
+          content.innerHTML = `<b>Bad Request</b>`;
+          break;
+        case 404:
+          content.innerHTML = `<b>Resource Not Found</b>`;
+          break;
+        default: 
+          content.innerHTML = `Error code not implemented by client.`;
+          break;
+      }
+
+      if(parseResponse) {
+        //Parse the response to json. This is an async function, so we will await it.
+        let obj = await response.json();
+
+        if (response.status === 200) {
+          //To display the data easily, we will just stringify it again and display it.
+          let jsonString = JSON.stringify(obj);
+          content.innerHTML += `<p>${jsonString}</p>`;
+        }
+        else {
+          let parsedJSON = JSON.parse(JSON.stringify(obj));
+          content.innerHTML += `<p>Message: ${parsedJSON.message}</p>`;
+          if (parsedJSON.id) content.innerHTML += `<p>ID: ${parsedJSON.id}</p>`;
+        }
+      } else {
+        //If we don't have a response to parse, just say we recieved metadata
+        if (response.status !== 404) content.innerHTML += '<p>Meta Data Received</p>';
+      }
+    };
+
+    const requestUpdate = async (userForm) => {
+      //Grab the url and method from the html form below
+      const url = userForm.querySelector('#urlField').value;
+      const method = userForm.querySelector('#methodSelect').value;
+      
+      //Await our fetch response. Go to the URL, use the right method, and attach the headers.
+      let response = await fetch(url, {
+        method,
+        headers: {
+          'Accept': 'application/json'
+        },
+      });
+
+      //Once we have our response, send it into handle response. The second parameter is a boolean
+      //that says if we should parse the response or not. We will get a response to parse on get
+      //requests so we can do an inline boolean check, which will return a true or false to pass in.
+      handleResponse(response, method === 'get');
+    };
+
+    const postUpdate = async (nameForm) => {
+      //Get the action and method from the name form
+      const action = nameForm.getAttribute('action');
+      const method = nameForm.getAttribute('method');
+
+      //Get the name and age from the name form
+      const name = nameForm.querySelector('#nameField');
+      const age = nameForm.querySelector('#ageField');
+
+      //Create the data from the name and age
+      const formData = `name=${nameField.value}&age=${ageField.value}`;
+
+      //Make a fetch request and await a response. Set the method to
+      //the one provided by the form (POST). Set the headers. Content-Type
+      //is the type of data we are sending. Accept is the data we would like
+      //in response. Then add our FORM-URLENCODED string as the body of the request.
+      let response = await fetch(action, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: formData
+      });
+
+      //Once we have a response, handle it.
+      handleResponse(response, true);
+    };
+
+    const init = () => {
+      //grab forms
+      const nameForm = document.querySelector('#nameForm');
+      const userForm = document.querySelector('#userForm');
+      
+      //Handles posts and update requests
+      const postUser = (e) => {
+        e.preventDefault();
+        postUpdate(nameForm);
+        return false;
+      }
+      const getUsers = (e) => {
+        e.preventDefault();
+        requestUpdate(userForm);
+        return false;
+      }
+      
+      //add event listener
+      nameForm.addEventListener('submit', postUser);
+      userForm.addEventListener('submit', getUsers);
+    };
+
+    window.onload = init;
   </script>
 </head>
 <body>
